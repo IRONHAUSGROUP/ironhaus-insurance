@@ -31,6 +31,7 @@
     <input type="number" id="carYear" placeholder="Vehicle Year (e.g. 2020)" class="p-3 border rounded" required>
     <input type="text" id="vinNumber" placeholder="VIN Number" class="p-3 border rounded" required>
     <input type="text" id="address" placeholder="Full Address" class="p-3 border rounded" required>
+<input type="email" id="email" placeholder="Email Address" class="p-3 border rounded" required>
 
     <select id="age" class="p-3 border rounded" required>
       <option value="">Select Age Group</option>
@@ -114,6 +115,8 @@
     const address = document.getElementById("address").value;
     const quotePrice = document.getElementById("quotePrice").innerText.replace("/mo", "").replace("$", "");
     const amount = parseFloat(quotePrice) * 100;
+    const email = document.getElementById("email").value;
+
 
     try {
       const res = await fetch("/create-checkout-session", {
@@ -128,6 +131,7 @@
           vinNumber,
           address,
           amount,
+          email,
         }),
       });
 
@@ -136,7 +140,7 @@
       const data = await res.json();
 
       if (data.id) {
-        const stripe = Stripe("pk_test_51RpfsOEoHZimObO2X8tsVijMFqKhfjHhEjVqZlaS79kWBeCoLne0rEOFoYooDzSoK83YWEtPXYBGVfZFhiHmpBbo00CfOEs0YX");
+        const stripe = Stripe("pk_live_51RpfsOEoHZimObO2lxKrvwwZbetF5465IhlD3MUKK72EgN54EgHqSUmJlRvQBWDlQSe3kBA3DNgOcXqQPzKkV42Z00qcatL50v");
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (error) {
           alert(error.message);
