@@ -119,21 +119,22 @@
 
 
     try {
-      const res = await fetch("/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName,
-          makeModel,
-          carYear,
-          vinNumber,
-          address,
-          amount,
-          email,
-        }),
-      });
+      const res = await fetch("https://ironhaus-insurance-1.onrender.com/create-checkout-session", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    fullName,
+    makeModel,
+    carYear,
+    vinNumber,
+    address,
+    email,
+    amount,
+  }),
+});
+
 
       if (!res.ok) throw new Error('Failed to create checkout session');
 
