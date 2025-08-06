@@ -21,16 +21,15 @@ const credentials = {
   client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL,
 };
 
+const auth = new google.auth.GoogleAuth({
+  credentials: credentials,
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-
-// Auth for Google Sheets
-const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(__dirname, 'credentials.json'),
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
 
 
 // Google Sheets append helper
