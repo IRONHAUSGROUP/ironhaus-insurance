@@ -8,6 +8,20 @@ const Stripe = require('stripe');
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+function makePolicyNumber(stateAbbr = 'US') {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  const rand = Math.random().toString(36).slice(2,7).toUpperCase(); // 5 chars
+  const st = (stateAbbr || 'US').toUpperCase();
+  return `IH-${y}${m}${d}-${st}-${rand}`;
+}
+function stateFromAddress(address = '') {
+  const m = String(address).match(/(?:^|[\s,])([A-Za-z]{2})(?:[\s,]|\s+\d{5})/);
+  return m ? m[1].toUpperCase() : 'US';
+}
+
 const credentials = {
   type: process.env.GOOGLE_TYPE,
   project_id: process.env.GOOGLE_PROJECT_ID,
@@ -31,6 +45,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+const stateAbbr = stateFromAddress(address);
+const policyNumber = makePolicyNumber(stateAbbr);
+
+await appendToSheet([
+  fullName,
+  email,        // if you're recording it
+  address,
+  carYear,
+  makeModel,
+  vinNumber,
+  `$${(amount / 100).toFixed(2)}/mo`,
+  policyNumber  // <-- NEW COLUMN
+]);
 
 // Google Sheets append helper
 async function appendToSheet(row) {
