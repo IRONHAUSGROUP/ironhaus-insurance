@@ -1,158 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IronHaus Auto Insurance</title>
   <script src="https://js.stripe.com/v3/"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50 text-gray-900">
 
-<!-- Header -->
-<header class="bg-blue-800 text-white py-6 text-center">
-  <h1 class="text-4xl font-bold">IronHaus Auto Insurance</h1>
-  <p class="text-sm mt-2">Call Us: 1-866-913-2679</p>
-</header>
+  <!-- Header -->
+  <header class="bg-blue-800 text-white py-6 text-center">
+    <h1 class="text-4xl font-bold">IronHaus Auto Insurance</h1>
+    <p class="text-sm mt-2">Call Us: 1-866-913-2679</p>
+  </header>
 
-<!-- Hero Section -->
-<section class="text-center py-20 px-6 bg-gradient-to-r from-blue-700 to-blue-500 text-white">
-  <h2 class="text-5xl font-bold mb-4">Affordable Online Auto Insurance</h2>
-  <p class="text-lg mb-8">Liability at just $60/month. Full Coverage at $120/month. Instant pricing. certificate delivered in minutes.</p>
-  <a href="#quote" class="bg-white text-blue-800 font-semibold py-3 px-6 rounded hover:bg-gray-200 transition">Get My Quote</a>
-</section>
+  <!-- Hero -->
+  <section class="text-center py-20 px-6 bg-gradient-to-r from-blue-700 to-blue-500 text-white">
+    <h2 class="text-5xl font-bold mb-4">Affordable Online Auto Insurance</h2>
+    <p class="text-lg mb-8">Liability at just $60/month. Full Coverage at $120/month. Instant pricing. Certificate delivered in minutes.</p>
+    <a href="#quote" class="bg-white text-blue-800 font-semibold py-3 px-6 rounded hover:bg-gray-200 transition">Get My Quote</a>
+  </section>
 
-<!-- Quote Section -->
-<section id="quote" class="bg-white py-16 px-6">
-  <h3 class="text-3xl font-bold text-center mb-8">Get Your Instant Quote</h3>
-  <form class="max-w-2xl mx-auto grid grid-cols-1 gap-4" onsubmit="event.preventDefault(); startCheckout();">
-    <input type="text" id="fullName" placeholder="Full Name" class="p-3 border rounded" required>
-    <input type="text" id="makeModel" placeholder="Vehicle Make/Model" class="p-3 border rounded" required>
-    <input type="number" id="carYear" placeholder="Vehicle Year (e.g. 2020)" class="p-3 border rounded" required>
-    <input type="text" id="vinNumber" placeholder="VIN Number" class="p-3 border rounded" required>
-    <input type="text" id="address" placeholder="Full Address" class="p-3 border rounded" required>
-<input type="email" id="email" placeholder="Email Address" class="p-3 border rounded" required>
+  <!-- Quote -->
+  <section id="quote" class="bg-white py-16 px-6">
+    <h3 class="text-3xl font-bold text-center mb-8">Get Your Instant Quote</h3>
 
-    <select id="age" class="p-3 border rounded" required>
-      <option value="">Select Age Group</option>
-      <option value="1">Under 25</option>
-      <option value="0">25–40</option>
-      <option value="0">41–60</option>
-      <option value="0">Over 60</option>
-    </select>
+    <form class="max-w-2xl mx-auto grid grid-cols-1 gap-4" onsubmit="event.preventDefault(); startCheckout();">
+      <input type="text" id="fullName" placeholder="Full Name" class="p-3 border rounded" required autocomplete="name"/>
+      <input type="text" id="makeModel" placeholder="Vehicle Make/Model" class="p-3 border rounded" required/>
+      <input type="number" id="carYear" placeholder="Vehicle Year (e.g. 2020)" class="p-3 border rounded" required min="1980" max="2099"/>
+      <input type="text" id="vinNumber" placeholder="VIN Number" class="p-3 border rounded" required/>
+      <input type="text" id="address" placeholder="Full Address" class="p-3 border rounded" required autocomplete="street-address"/>
+      <input type="email" id="email" placeholder="Email Address" class="p-3 border rounded" required autocomplete="email"/>
 
-    <select id="gender" class="p-3 border rounded" required>
-      <option value="">Gender</option>
-      <option value="0">Non-Binary</option>
-      <option value="1">Wish to not disclose</option>
-      <option value="2">Male</option>
-      <option value="0">Female</option>
-    </select>
+      <select id="age" class="p-3 border rounded" required>
+        <option value="">Select Age Group</option>
+        <option value="1">Under 25</option>
+        <option value="0">25–40</option>
+        <option value="0">41–60</option>
+        <option value="0">Over 60</option>
+      </select>
 
-    <select id="coverage" class="p-3 border rounded" required>
-      <option value="60">Liability ($60 base)</option>
-      <option value="120">Full Coverage ($120 base)</option>
-    </select>
+      <select id="gender" class="p-3 border rounded" required>
+        <option value="">Gender</option>
+        <option value="0">Non-Binary</option>
+        <option value="1">Prefer not to say</option>
+        <option value="2">Male</option>
+        <option value="0">Female</option>
+      </select>
 
-    <select id="accidents" class="p-3 border rounded" required>
-      <option value="0">Any accidents or tickets in the last 3 years?</option>
-      <option value="1">Yes</option>
-      <option value="0">No</option>
-    </select>
+      <select id="coverage" class="p-3 border rounded" required>
+        <option value="60">Liability ($60 base)</option>
+        <option value="120">Full Coverage ($120 base)</option>
+      </select>
 
-    <select id="suspended" class="p-3 border rounded" required>
-      <option value="0">Has your license been suspended in the last 3 years?</option>
-      <option value="1">Yes</option>
-      <option value="0">No</option>
-    </select>
+      <select id="accidents" class="p-3 border rounded" required>
+        <option value="">Any accidents or tickets in the last 3 years?</option>
+        <option value="5">Yes</option>
+        <option value="0">No</option>
+      </select>
 
-    <div class="text-xl font-semibold text-center">
-      Estimated Monthly Price: <span id="quotePrice">$0</span>
-    </div>
+      <select id="suspended" class="p-3 border rounded" required>
+        <option value="">Has your license been suspended in the last 3 years?</option>
+        <option value="4">Yes</option>
+        <option value="0">No</option>
+      </select>
 
-    <button type="submit" class="bg-blue-800 text-white py-3 rounded hover:bg-blue-700 transition">Continue to Payment</button>
-  </form>
-</section>
+      <div class="text-xl font-semibold text-center">
+        Estimated Monthly Price: <span id="quotePrice">$0/mo</span>
+      </div>
 
-<!-- Footer -->
-<footer class="bg-gray-200 text-center py-6 text-sm mt-16">
-  &copy; 2025 IronHaus Auto Insurance. All rights reserved. Call 1-866-913-2679
-</footer>
+      <button type="submit" id="payBtn" class="bg-blue-800 text-white py-3 rounded hover:bg-blue-700 transition">
+        Continue to Payment
+      </button>
+    </form>
+  </section>
 
-<script>
-  const basePrices = {
-    "60": 60,
-    "120": 120
-  };
+  <footer class="bg-gray-200 text-center py-6 text-sm mt-16">
+    &copy; 2025 IronHaus Auto Insurance. All rights reserved. Call 1-866-913-2679
+  </footer>
 
-  function calculatePrice() {
-    const coverage = document.getElementById("coverage").value;
-    const ageRisk = parseInt(document.getElementById("age").value || "0");
-    const genderRisk = parseInt(document.getElementById("gender").value || "0");
-    const carYear = parseInt(document.getElementById("carYear").value || "0");
-    const currentYear = new Date().getFullYear();
-    const carRisk = carYear >= currentYear - 4 ? 1 : 0;
-    const accidentRisk = parseInt(document.getElementById("accidents").value || "0") * 5;
-    const suspendedRisk = parseInt(document.getElementById("suspended").value || "0") * 4;
+  <script>
+    const STRIPE_PUBLISHABLE_KEY = "pk_live_51RpfsOEoHZimObO2lxKrvwwZbetF5465IhlD3MUKK72EgN54EgHqSUmJlRvQBWDlQSe3kBA3DNgOcXqQPzKkV42Z00qcatL50v";
+    const API_BASE = "https://ironhaus-insurance-1.onrender.com";
 
-    const riskFactors = ageRisk + genderRisk + carRisk;
-    const riskCost = (riskFactors * 7) + accidentRisk + suspendedRisk;
-    const finalPrice = basePrices[coverage] + riskCost;
+    const basePrices = { "60": 60, "120": 120 };
 
-    document.getElementById("quotePrice").innerText = `$${finalPrice}/mo`;
-    return finalPrice;
-  }
+    function calculatePrice() {
+      const coverage = document.getElementById("coverage").value || "60";
+      const ageRisk = parseInt(document.getElementById("age").value || "0", 10);
+      const genderRisk = parseInt(document.getElementById("gender").value || "0", 10);
 
-  ["coverage", "age", "gender", "carYear", "accidents", "suspended"].forEach(id => {
-    document.getElementById(id).addEventListener("change", calculatePrice);
-  });
+      const carYearVal = parseInt(document.getElementById("carYear").value || "0", 10);
+      const currentYear = new Date().getFullYear();
+      const carRisk = carYearVal >= currentYear - 4 ? 1 : 0;
 
-  async function startCheckout() {
-    const fullName = document.getElementById("fullName").value;
-    const makeModel = document.getElementById("makeModel").value;
-    const carYear = document.getElementById("carYear").value;
-    const vinNumber = document.getElementById("vinNumber").value;
-    const address = document.getElementById("address").value;
-    const quotePrice = document.getElementById("quotePrice").innerText.replace("/mo", "").replace("$", "");
-    const amount = parseFloat(quotePrice) * 100;
-    const email = document.getElementById("email").value;
+      const accidentRisk = parseInt(document.getElementById("accidents").value || "0", 10);
+      const suspendedRisk = parseInt(document.getElementById("suspended").value || "0", 10);
 
+      const riskFactors = ageRisk + genderRisk + carRisk + accidentRisk + suspendedRisk;
+      const riskCost = (ageRisk + genderRisk + carRisk) * 7 + (accidentRisk) + (suspendedRisk);
+      const finalPrice = (basePrices[coverage] || 60) + riskCost;
 
-    try {
-      const res = await fetch("https://ironhaus-insurance-1.onrender.com/create-checkout-session", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    fullName,
-    makeModel,
-    carYear,
-    vinNumber,
-    address,
-    email,
-    amount,
-  }),
-});
-
-
-      if (!res.ok) throw new Error('Failed to create checkout session');
-
-      const data = await res.json();
-
-      if (data.id) {
-        const stripe = Stripe("pk_live_51RpfsOEoHZimObO2lxKrvwwZbetF5465IhlD3MUKK72EgN54EgHqSUmJlRvQBWDlQSe3kBA3DNgOcXqQPzKkV42Z00qcatL50v");
-        const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-        if (error) {
-          alert(error.message);
-          console.error('Stripe redirect error:', error);
-        }
-      } else {
-        alert("Error starting checkout.");
-      }
-    } catch (error) {
-      alert("Checkout error: " + error.message);
-      console.error("Checkout error:", error);
+      document.getElementById("quotePrice").innerText = `$${finalPrice}/mo`;
+      return finalPrice;
     }
-  }
-</script>
+
+    // Update price when inputs change
+    ["coverage","age","gender","carYear","accidents","suspended"].forEach(id => {
+      document.getElementById(id).addEventListener("change", calculatePrice);
+      document.getElementById(id).addEventListener("keyup", calculatePrice);
+    });
+
+    // Initialize price on load
+    window.addEventListener("DOMContentLoaded", calculatePrice);
+
+    async function startCheckout() {
+      const fullName  = document.getElementById("fullName").value.trim();
+      const makeModel = document.getElementById("makeModel").value.trim();
+      const carYear   = document.getElementById("carYear").value.trim();
+      const vinNumber = document.getElementById("vinNumber").value.trim();
+      const address   = document.getElementById("address").value.trim();
+      const email     = document.getElementById("email").value.trim();
+
+      const priceDollars = calculatePrice();
+      const amount = Math.max(0, Math.round(priceDollars * 100)); // cents
+
+      // Basic client-side validation
+      if (!fullName || !makeModel || !carYear || !vinNumber || !address || !email) {
+        alert("Please complete all fields.");
+        return;
+      }
+
+      const btn = document.getElementById("payBtn");
+      btn.disabled = true;
+      btn.textContent = "Processing…";
+
+      try {
+        const res = await fetch(`${API_BASE}/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, makeModel, carYear, vinNumber, address, email, amount })
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "Failed to create checkout session");
+        }
+
+        const data = await res.json();
+        if (!data.id) throw new Error("No session id returned");
+
+        const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+        const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+        if (error) throw error;
+
+      } catch (err) {
+        console.error("Checkout error:", err);
+        alert("Checkout error: " + (err.message || err));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Continue to Payment";
+      }
+    }
+  </script>
+</body>
+</html>
+
