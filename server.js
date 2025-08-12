@@ -110,7 +110,7 @@ app.post('/create-checkout-session', async (req, res) => {
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: 'Auto Insurance Policy' },
+          product_data: { name: 'Auto Group Payment' },
           unit_amount: amount, // cents
         },
         quantity: 1,
