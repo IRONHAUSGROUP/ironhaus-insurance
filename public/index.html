@@ -82,8 +82,8 @@
   </footer>
 
   <script>
-    const STRIPE_PUBLISHABLE_KEY = "pk_live_51RpfsOEoHZimObO2lxKrvwwZbetF5465IhlD3MUKK72EgN54EgHqSUmJlRvQBWDlQSe3kBA3DNgOcXqQPzKkV42Z00qcatL50v";
-    const API_BASE = "https://ironhaus-insurance-1.onrender.com";
+    // Use same-origin API
+    const API_BASE = '';
 
     const basePrices = { "60": 60, "120": 120 };
 
@@ -91,29 +91,23 @@
       const coverage = document.getElementById("coverage").value || "60";
       const ageRisk = parseInt(document.getElementById("age").value || "0", 10);
       const genderRisk = parseInt(document.getElementById("gender").value || "0", 10);
-
       const carYearVal = parseInt(document.getElementById("carYear").value || "0", 10);
       const currentYear = new Date().getFullYear();
       const carRisk = carYearVal >= currentYear - 4 ? 1 : 0;
-
       const accidentRisk = parseInt(document.getElementById("accidents").value || "0", 10);
       const suspendedRisk = parseInt(document.getElementById("suspended").value || "0", 10);
 
-      const riskFactors = ageRisk + genderRisk + carRisk + accidentRisk + suspendedRisk;
-      const riskCost = (ageRisk + genderRisk + carRisk) * 7 + (accidentRisk) + (suspendedRisk);
+      const riskCost = (ageRisk + genderRisk + carRisk) * 7 + accidentRisk + suspendedRisk;
       const finalPrice = (basePrices[coverage] || 60) + riskCost;
 
       document.getElementById("quotePrice").innerText = `$${finalPrice}/mo`;
       return finalPrice;
     }
 
-    // Update price when inputs change
     ["coverage","age","gender","carYear","accidents","suspended"].forEach(id => {
       document.getElementById(id).addEventListener("change", calculatePrice);
       document.getElementById(id).addEventListener("keyup", calculatePrice);
     });
-
-    // Initialize price on load
     window.addEventListener("DOMContentLoaded", calculatePrice);
 
     async function startCheckout() {
@@ -127,7 +121,6 @@
       const priceDollars = calculatePrice();
       const amount = Math.max(0, Math.round(priceDollars * 100)); // cents
 
-      // Basic client-side validation
       if (!fullName || !makeModel || !carYear || !vinNumber || !address || !email) {
         alert("Please complete all fields.");
         return;
@@ -138,6 +131,11 @@
       btn.textContent = "Processing…";
 
       try {
+        // Get publishable key from server
+        const { publishableKey } = await fetch(`${API_BASE}/config`).then(r => r.json());
+        if (!publishableKey) throw new Error('Missing publishable key');
+
+        // Create session on server
         const res = await fetch(`${API_BASE}/create-checkout-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -152,7 +150,7 @@
         const data = await res.json();
         if (!data.id) throw new Error("No session id returned");
 
-        const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+        const stripe = Stripe(publishableKey);
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (error) throw error;
 
@@ -167,4 +165,3 @@
   </script>
 </body>
 </html>
-

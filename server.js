@@ -2,13 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { google } = require('googleapis');
 const Stripe = require('stripe');
+const { google } = require('googleapis');
 
 const app = express();
+
+// --- Stripe ---
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn('⚠️  STRIPE_SECRET_KEY is missing');
+}
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ---------- Helpers ----------
+// --- Helpers ---
 function makePolicyNumber(stateAbbr = 'US') {
   const now = new Date();
   const y = now.getFullYear();
@@ -21,42 +26,38 @@ function makePolicyNumber(stateAbbr = 'US') {
 
 function stateFromAddress(address = '') {
   const s = String(address).trim();
-
-  // ", ST 12345" or " ST 12345"
   let m = s.match(/(?:,|\s)([A-Za-z]{2})\s*\d{5}(?:-\d{4})?$/i);
   if (m) return m[1].toUpperCase();
-
-  // Any 2-letter token anywhere
   const tokens = s.split(/[^A-Za-z]/).filter(Boolean);
   for (const t of tokens) if (t.length === 2) return t.toUpperCase();
-
   return 'US';
 }
 
-// ---------- Google Sheets Auth ----------
-const credentials = {
-  type: process.env.GOOGLE_TYPE,
-  project_id: process.env.GOOGLE_PROJECT_ID,
-  private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-  // works with both escaped and unescaped keys
-  private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  client_email: process.env.GOOGLE_CLIENT_EMAIL,
-  client_id: process.env.GOOGLE_CLIENT_ID,
-  auth_uri: process.env.GOOGLE_AUTH_URI,
-  token_uri: process.env.GOOGLE_TOKEN_URI,
-  auth_provider_x509_cert_url: process.env.GOOGLE_AUTH_PROVIDER_X509_CERT_URL,
-  client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL,
-};
-
-const auth = new google.auth.GoogleAuth({
-  credentials,
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
+// --- Google Sheets (optional, won’t block checkout) ---
+let auth = null;
+if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SHEET_ID) {
+  const credentials = {
+    type: process.env.GOOGLE_TYPE,
+    project_id: process.env.GOOGLE_PROJECT_ID,
+    private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+    private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    auth_uri: process.env.GOOGLE_AUTH_URI,
+    token_uri: process.env.GOOGLE_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.GOOGLE_AUTH_PROVIDER_X509_CERT_URL,
+    client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL,
+  };
+  auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+}
 
 async function appendToSheet(row) {
+  if (!auth) return;
   const client = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: client });
-
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range: 'Sheet1!A:H', // Name | email | Address | Year | Make/Model | VIN | Amount | Policy Number
@@ -66,7 +67,7 @@ async function appendToSheet(row) {
   });
 }
 
-// ---------- Middleware & Static ----------
+// --- Middleware / Static ---
 app.use(cors({
   origin: [
     'https://ironhaus-insurance-1.onrender.com',
@@ -76,26 +77,24 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ---------- Small health + config ----------
+// --- Health & Config ---
 app.get('/health', (req, res) => {
   res.json({
     ok: true,
     envs: {
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
       STRIPE_PUBLISHABLE_KEY: !!process.env.STRIPE_PUBLISHABLE_KEY,
-      SHEET_ID: !!process.env.GOOGLE_SHEET_ID,
+      GOOGLE_SHEET_ID: !!process.env.GOOGLE_SHEET_ID,
       GOOGLE_CLIENT_EMAIL: !!process.env.GOOGLE_CLIENT_EMAIL,
-      GOOGLE_PRIVATE_KEY: !!process.env.GOOGLE_PRIVATE_KEY,
     },
   });
 });
 
-// Frontend will call this to get the publishable key (so it’s not hard-coded)
-app.get('/config', (req, res) => {
+app.get('/config', (_req, res) => {
   res.json({ publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
 });
 
-// Optional: quick Sheets test (no Stripe)
+// --- Sheets test (optional) ---
 app.post('/test-sheets', async (_req, res) => {
   try {
     await appendToSheet([
@@ -109,59 +108,57 @@ app.post('/test-sheets', async (_req, res) => {
   }
 });
 
+// --- Stripe Checkout ---
 app.post('/create-checkout-session', async (req, res) => {
-  const { fullName, makeModel, carYear, vinNumber, address, amount, email } = req.body;
-
   try {
-    // 1) Create Stripe session
+    const { fullName, makeModel, carYear, vinNumber, address, amount, email } = req.body;
+
+    const intAmount = Number(amount);
+    if (!Number.isFinite(intAmount) || intAmount < 50) {
+      return res.status(400).json({ error: 'invalid_amount' });
+    }
+
     const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'usd',
           product_data: { name: 'Auto Group Payment' },
-          unit_amount: Number(amount), // cents
+          unit_amount: intAmount, // cents
         },
         quantity: 1,
       }],
-      mode: 'payment',
       success_url: 'https://ironhaus-insurance-1.onrender.com/success.html',
       cancel_url:  'https://ironhaus-insurance-1.onrender.com/cancel.html',
     });
 
-    // 2) Respond immediately so redirect can happen even if Sheets is slow
+    // Return session first so redirect isn't delayed
     res.json({ id: session.id });
 
-    // 3) Fire-and-forget: write to Google Sheets (won’t block checkout)
+    // Fire-and-forget logging to Sheets
     const stateAbbr = stateFromAddress(address);
     const policyNumber = makePolicyNumber(stateAbbr);
-    const amountDollars = `$${(Number(amount || 0) / 100).toFixed(2)}/mo`;
+    const amountDollars = `$${(intAmount / 100).toFixed(2)}/mo`;
 
     appendToSheet([
-      fullName,
-      email,
-      address,
+      fullName || '',
+      email || '',
+      address || '',
       String(carYear || ''),
-      makeModel,
-      vinNumber,
+      makeModel || '',
+      vinNumber || '',
       amountDollars,
       policyNumber,
-    ]).then(() => {
-      console.log('✓ sheet append ok');
-    }).catch(err => {
-      console.error('❌ sheet append failed:', err);
-    });
+    ]).then(() => console.log('✓ sheet append ok'))
+      .catch(err => console.error('❌ sheet append failed:', err));
 
   } catch (error) {
     console.error('🔥 ERROR (checkout):', error);
-    // Return a JSON error so the frontend can show a useful message
-    res.status(500).json({ error: 'create_session_failed', detail: String(error) });
+    res.status(500).json({ error: 'create_session_failed' });
   }
 });
 
-
-// ---------- Start server ----------
+// --- Start ---
 const PORT = process.env.PORT || 4242;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
