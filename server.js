@@ -109,19 +109,18 @@ app.post('/test-sheets', async (_req, res) => {
   }
 });
 
-// ---------- Stripe Checkout + Write to Sheets ----------
 app.post('/create-checkout-session', async (req, res) => {
   const { fullName, makeModel, carYear, vinNumber, address, amount, email } = req.body;
 
   try {
-    // 1) Stripe Checkout Session
+    // 1) Create Stripe session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'usd',
           product_data: { name: 'Auto Group Payment' },
-          unit_amount: Number(amount || 0), // cents
+          unit_amount: Number(amount), // cents
         },
         quantity: 1,
       }],
@@ -130,30 +129,36 @@ app.post('/create-checkout-session', async (req, res) => {
       cancel_url:  'https://ironhaus-insurance-1.onrender.com/cancel.html',
     });
 
-    // 2) Policy number
+    // 2) Respond immediately so redirect can happen even if Sheets is slow
+    res.json({ id: session.id });
+
+    // 3) Fire-and-forget: write to Google Sheets (won’t block checkout)
     const stateAbbr = stateFromAddress(address);
     const policyNumber = makePolicyNumber(stateAbbr);
-
-    // 3) Append to Sheet (columns A..H)
     const amountDollars = `$${(Number(amount || 0) / 100).toFixed(2)}/mo`;
-    await appendToSheet([
-      fullName ?? '',
-      email ?? '',
-      address ?? '',
-      String(carYear ?? ''),
-      makeModel ?? '',
-      vinNumber ?? '',
+
+    appendToSheet([
+      fullName,
+      email,
+      address,
+      String(carYear || ''),
+      makeModel,
+      vinNumber,
       amountDollars,
       policyNumber,
-    ]);
+    ]).then(() => {
+      console.log('✓ sheet append ok');
+    }).catch(err => {
+      console.error('❌ sheet append failed:', err);
+    });
 
-    // 4) Return session id
-    res.json({ id: session.id });
   } catch (error) {
     console.error('🔥 ERROR (checkout):', error);
-    res.status(500).send('Internal Server Error');
+    // Return a JSON error so the frontend can show a useful message
+    res.status(500).json({ error: 'create_session_failed', detail: String(error) });
   }
 });
+
 
 // ---------- Start server ----------
 const PORT = process.env.PORT || 4242;
