@@ -109,34 +109,71 @@ app.post('/test-sheets', async (_req, res) => {
 });
 
 // --- Stripe Checkout ---
+// --- Stripe Checkout ---
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    const { fullName, makeModel, carYear, vinNumber, address, amount, email } = req.body;
+    let { fullName, makeModel, carYear, vinNumber, address, amount, email } = req.body;
 
-    const intAmount = Number(amount);
-    if (!Number.isFinite(intAmount) || intAmount < 50) {
-      return res.status(400).json({ error: 'invalid_amount' });
+    // --- Validate required fields (fail fast with clear messages) ---
+    const missing = [];
+    if (!fullName)  missing.push('fullName');
+    if (!makeModel) missing.push('makeModel');
+    if (!carYear)   missing.push('carYear');
+    if (!vinNumber) missing.push('vinNumber');
+    if (!address)   missing.push('address');
+    if (!email)     missing.push('email');
+    if (missing.length) {
+      return res.status(400).json({ error: 'missing_fields', fields: missing });
     }
 
+    // --- Normalize + validate amount (integer cents, >= 50) ---
+    let intAmount = Number(amount);
+    if (!Number.isFinite(intAmount)) {
+      return res.status(400).json({ error: 'invalid_amount_type', got: amount });
+    }
+    intAmount = Math.round(intAmount);
+    if (intAmount < 50) {
+      return res.status(400).json({ error: 'invalid_amount_min_50', got: intAmount });
+    }
+
+    // --- Create Checkout Session ---
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
+      customer_email: email,                // helps receipts + Radar
+      // automatic_tax: { enabled: true },  // ONLY if you enable Tax in Dashboard
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: 'Auto Group Payment' },
+          product_data: {
+            name: 'Auto Group Payment',
+            metadata: {
+              fullName,
+              carYear: String(carYear || ''),
+              makeModel,
+              vinNumber,
+            },
+          },
           unit_amount: intAmount, // cents
         },
         quantity: 1,
       }],
       success_url: 'https://ironhaus-insurance-1.onrender.com/success.html',
       cancel_url:  'https://ironhaus-insurance-1.onrender.com/cancel.html',
+      metadata: {
+        fullName,
+        email,
+        carYear: String(carYear || ''),
+        makeModel,
+        vinNumber,
+        address,
+      },
     });
 
-    // Return session first so redirect isn't delayed
+    // --- Respond first so redirect isn't blocked ---
     res.json({ id: session.id });
 
-    // Fire-and-forget logging to Sheets
+    // --- Fire-and-forget: Sheets append (logs any error) ---
     const stateAbbr = stateFromAddress(address);
     const policyNumber = makePolicyNumber(stateAbbr);
     const amountDollars = `$${(intAmount / 100).toFixed(2)}/mo`;
@@ -150,14 +187,24 @@ app.post('/create-checkout-session', async (req, res) => {
       vinNumber || '',
       amountDollars,
       policyNumber,
-    ]).then(() => console.log('✓ sheet append ok'))
-      .catch(err => console.error('❌ sheet append failed:', err));
+    ])
+      .then(() => console.log('✓ sheet append ok'))
+      .catch(err => console.error('❌ sheet append failed:', err?.message || err));
 
   } catch (error) {
-    console.error('🔥 ERROR (checkout):', error);
-    res.status(500).json({ error: 'create_session_failed' });
+    // Stripe errors have helpful fields; log them
+    console.error('🔥 ERROR (checkout):', {
+      message: error?.message,
+      type:    error?.type,
+      code:    error?.code,
+      param:   error?.param,
+      status:  error?.statusCode,
+      raw:     error?.raw,
+    });
+    res.status(500).json({ error: 'create_session_failed', detail: error?.message || String(error) });
   }
 });
+
 
 // --- Start ---
 const PORT = process.env.PORT || 4242;
